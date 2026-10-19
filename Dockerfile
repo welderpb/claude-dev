@@ -20,13 +20,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-pip python3-venv \
       build-essential pkg-config \
       zsh \
+      podman-remote \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+    && ln -s /usr/bin/podman-remote /usr/local/bin/podman \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install global npm packages into a directory owned by node,
 # so Claude Code can update itself without root
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global \
     PATH=/usr/local/share/npm-global/bin:$PATH \
+    CONTAINER_HOST=unix:///run/podman/podman.sock \
     EDITOR=nano \
     VISUAL=nano \
     SHELL=/bin/bash

@@ -24,6 +24,7 @@ alias claude-podman='podman run --rm -it --init \
   -v "$PWD":"$PWD":Z \
   -v "$HOME/.config/gh":/home/node/.config/gh:ro,z \
   -v "$HOME/.config/git":/home/node/.config/git:ro,z \
+  -v /srv/podman-builder/podman.sock:/run/podman/podman.sock \
   -v claude-box-config:/home/node/.claude \
   -e CLAUDE_CONFIG_DIR=/home/node/.claude \
   -e CLAUDE_CODE_OAUTH_TOKEN="$(pass show claude | head -n1)" \
@@ -34,6 +35,48 @@ alias claude-podman='podman run --rm -it --init \
 ```
 
 Apply it with `source ~/.zshrc`.
+
+## Building images from the container
+
+The image contains `podman-remote` (available as `podman`). It talks to a
+rootless Podman of a separate host user, `builder`, which has no access
+to your home directory. Never mount your own Podman socket here: it
+would give the container full access to your user.
+
+One-time setup on the host (run as root, e.g. with sudo):
+
+    useradd --create-home --shell /usr/bin/nologin builder
+    # if useradd did not allocate subuid/subgid ranges:
+    # usermod --add-subuids 200000-265535 --add-subgids 200000-265535 builder
+    loginctl enable-linger builder
+
+    # directory for the socket: only builder and you can enter it
+    install -d -o builder -g builder -m 0750 /srv/podman-builder
+    setfacl -m u:YOUR_LOGIN:x /srv/podman-builder  # replace YOUR_LOGIN, do not leave it empty
+
+    # put the socket there and make it connectable
+    sudo -u builder install -d /home/builder/.config/systemd/user/podman.socket.d
+    sudo -u builder tee /home/builder/.config/systemd/user/podman.socket.d/override.conf <<'EOF'
+    [Socket]
+    ListenStream=
+    ListenStream=/srv/podman-builder/podman.sock
+    SocketMode=0666
+    EOF
+    systemctl --user -M builder@ daemon-reload
+    systemctl --user -M builder@ enable --now podman.socket
+
+Check that `/srv/podman-builder/podman.sock` exists. If `-M builder@`
+complains about a missing session, make sure lingering is enabled:
+`loginctl show-user builder | grep Linger`.
+
+Inside the container `podman build` now works: the build context is
+sent through the socket. Images are stored by `builder`, not by you;
+to use one on the host, copy it:
+
+    CONTAINER_HOST=unix:///srv/podman-builder/podman.sock podman save IMAGE | podman load
+
+Mounts of your directories (`podman run -v ...`) do not work with this
+setup, since `builder` cannot read your files. This is intentional.
 
 ## Usage
 
@@ -79,6 +122,11 @@ and restart the agent: `gpg-connect-agent reloadagent /bye`.
   volume. Reset it with `podman volume rm claude-box-config`.
 
 ## Security
+
+The Podman socket belongs to the separate `builder` user, so Claude can
+build images but cannot reach your home directory through it. It can
+still use the `builder` account: run containers there, use its network
+and CPU. Do not give `builder` access to anything valuable.
 
 The container has no network restrictions. With
 `--dangerously-skip-permissions` Claude can send the project contents
