@@ -20,10 +20,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-pip python3-venv \
       build-essential pkg-config \
       zsh \
-      podman-remote \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
-    && ln -s /usr/bin/podman-remote /usr/local/bin/podman \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Static podman client; talks to the host's podman through a socket
+RUN arch=$(dpkg --print-architecture) \
+    && curl -fsSL "https://github.com/containers/podman/releases/latest/download/podman-remote-static-linux_${arch}.tar.gz" \
+       | tar -xz -C /tmp \
+    && install "/tmp/bin/podman-remote-static-linux_${arch}" /usr/local/bin/podman \
+    && rm -rf /tmp/bin
 
 # Install global npm packages into a directory owned by node,
 # so Claude Code can update itself without root
