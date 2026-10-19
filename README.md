@@ -23,6 +23,7 @@ alias claude-podman='podman run --rm -it --init \
   --security-opt=no-new-privileges \
   -v "$PWD":"$PWD":Z \
   -v "$HOME/.config/gh":/home/node/.config/gh:ro,z \
+  -v "$HOME/.config/git":/home/node/.config/git:ro,z \
   -v claude-box-config:/home/node/.claude \
   -e CLAUDE_CONFIG_DIR=/home/node/.claude \
   -e CLAUDE_CODE_OAUTH_TOKEN="$(pass show claude | head -n1)" \
