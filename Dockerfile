@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       procps psmisc htop \
       nano vim \
       python3 python3-pip python3-venv \
+      python3-yaml python3-requests python3-jinja2 python3-pytest \
       build-essential pkg-config \
       zsh \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
