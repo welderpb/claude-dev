@@ -31,6 +31,17 @@ RUN arch=$(dpkg --print-architecture) \
     && install "/tmp/bin/podman-remote-static-linux_${arch}" /usr/local/bin/podman \
     && rm -rf /tmp/bin
 
+# Helm and Argo CD clients (latest releases)
+RUN arch=$(dpkg --print-architecture) \
+    && helm_version=$(curl -fsSL https://get.helm.sh/helm-latest-version) \
+    && curl -fsSL "https://get.helm.sh/helm-${helm_version}-linux-${arch}.tar.gz" \
+       | tar -xz -C /tmp \
+    && install "/tmp/linux-${arch}/helm" /usr/local/bin/helm \
+    && rm -rf "/tmp/linux-${arch}" \
+    && curl -fsSL -o /usr/local/bin/argocd \
+       "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-${arch}" \
+    && chmod +x /usr/local/bin/argocd
+
 # Install global npm packages into a directory owned by node,
 # so Claude Code can update itself without root
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global \
